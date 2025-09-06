@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { createEmbeddings } from "../helpers";
 const pdfParse = require("pdf-parse");
 
 export async function POST(req) {
@@ -17,41 +18,64 @@ export async function POST(req) {
         { status: 400 }
       );
     }
-
-    // convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // parse pdf
-    const pdfData = await pdfParse(buffer);
-
-    if (!pdfData.text || pdfData.text.trim().length === 0) {
+    //convert file to buffer
+    let buffer;
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    } catch (err) {
+      console.error("Buffer conversion error:", err);
       return NextResponse.json(
-        { error: "No readable text found in PDF" },
-        { status: 400 }
+        { error: "Failed to read uploaded file", success: false },
+        { status: 500 }
+      );
+    }
+
+    //parse pdf
+    let pdfData;
+    try {
+      pdfData = await pdfParse(buffer);
+    } catch (err) {
+      console.error("PDF parsing error:", err);
+      return NextResponse.json(
+        { error: "Failed to parse PDF", success: false },
+        { status: 500 }
       );
     }
 
     // chunk text
-    const splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 500,
-      chunkOverlap: 50,
-    });
+    let chunks;
+    try {
+      const splitter = new RecursiveCharacterTextSplitter({
+        chunkSize: 300,
+        chunkOverlap: 70,
+      });
+      chunks = await splitter.splitText(pdfData.text);
+    } catch (err) {
+      console.error("Chunking error:", err);
+      return NextResponse.json(
+        { error: "Failed to split PDF text into chunks", success: false },
+        { status: 500 }
+      );
+    }
 
-    const chunks = await splitter.splitText(pdfData.text);
+    if (!chunks.length) {
+      return NextResponse.json(
+        { error: "PDF produced no valid chunks", success: false },
+        { status: 400 }
+      );
+    }
+
+    // const embeddings = await createEmbeddings(chunks, file.name.split(".")[0]);
 
     return NextResponse.json({
       message: "PDF processed",
       success: true,
-      chunks: chunks.length,
     });
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("Unexpected upload error:", error);
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        success: false,
-      },
+      { error: "Internal server error", success: false },
       { status: 500 }
     );
   }
