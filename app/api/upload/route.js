@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { createEmbeddings } from "../helpers";
-const pdfParse = require("pdf-parse");
+import pdfParse from "pdf-parse";
 
 export async function POST(req) {
   try {
