@@ -36,3 +36,29 @@ export async function createEmbeddings(chunks, filename) {
     throw new Error("Failed to generate embeddings from OpenAI API");
   }
 }
+
+export async function saveEmbeddings(embeddings) {
+  if (!embeddings.length) throw new Error("No embeddings provided");
+
+  try {
+    const res = await fetch(`${process.env.UPSTASH_ENDPOINT}/upsert`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.UPSTASH_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(embeddings),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Upstash upsert failed: ${errText}`);
+    }
+
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("Error while saving embeddings:", error);
+    throw error;
+  }
+}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { createEmbeddings } from "../helpers";
+import { createEmbeddings, saveEmbeddings } from "../helpers";
 import pdfParse from "pdf-parse";
 
 export async function POST(req) {
@@ -43,6 +43,13 @@ export async function POST(req) {
       );
     }
 
+    if (!pdfData.text || pdfData.text.trim().length === 0) {
+      return NextResponse.json(
+        { error: "No readable text found in PDF", success: false },
+        { status: 400 }
+      );
+    }
+
     // chunk text
     let chunks;
     try {
@@ -66,10 +73,32 @@ export async function POST(req) {
       );
     }
 
-    // const embeddings = await createEmbeddings(chunks, file.name.split(".")[0]);
+    // create embeddings
+    let embeddings;
+
+    try {
+      embeddings = await createEmbeddings(chunks, file.name.split(".")[0]);
+    } catch (error) {
+      console.error("Embedding creation error:", error);
+      return NextResponse.json(
+        { error: "Failed to create embeddings", success: false },
+        { status: 500 }
+      );
+    }
+
+    // save embeddings
+    try {
+      await saveEmbeddings(embeddings);
+    } catch (error) {
+      console.error("Saving embeddings error:", error);
+      return NextResponse.json(
+        { error: "Failed to save embeddings", success: false },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
-      message: "PDF processed",
+      message: "PDF processed and ingested in DB!",
       success: true,
     });
   } catch (error) {
