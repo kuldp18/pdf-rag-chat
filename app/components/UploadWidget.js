@@ -1,11 +1,15 @@
 "use client";
 import { useState, useRef } from "react";
+import { useAppContext } from "../context/AppContext";
+import { useRouter } from "next/navigation";
 
 const UploadWidget = () => {
   const [file, setFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
+  const { setFilename } = useAppContext();
+  const router = useRouter();
 
   const handleChange = (e) => {
     if (e.target.files.length) {
@@ -39,8 +43,12 @@ const UploadWidget = () => {
     setIsLoading(true);
 
     uploadPDF()
-      .then((data) => {
-        console.log(data);
+      .then(async (res) => {
+        const data = await res.json();
+        if (data.success) {
+          setFilename(file.name.split(".")[0]);
+          router.push("/chat");
+        }
       })
       .catch((err) => {
         console.log(err);
