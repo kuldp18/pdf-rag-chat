@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 
 const UploadWidget = () => {
   const [file, setFile] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -20,14 +21,10 @@ const UploadWidget = () => {
     const formData = new FormData();
     formData.append("file", file);
 
-    try {
-      await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-    } catch (error) {
-      setError(error.message);
-    }
+    return fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
   };
 
   const handleSubmit = () => {
@@ -38,8 +35,20 @@ const UploadWidget = () => {
       return;
     }
     setError(null);
-    console.log(file);
-    uploadPDF();
+
+    setIsLoading(true);
+
+    uploadPDF()
+      .then((data) => {
+        console.log(data);
+      })
+      .catch((err) => {
+        console.log(err);
+        setError(err.message);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   return (
@@ -63,10 +72,10 @@ const UploadWidget = () => {
       </div>
 
       <button
-        className="bg-blue-500 mx-auto w-32 px-4 py-2 rounded-md hover:bg-blue-400 cursor-pointer transition-colors text-lg"
+        className="bg-blue-500 mx-auto w-32 px-14 py-3 rounded-md hover:bg-blue-400 cursor-pointer transition-colors text-md flex justify-center items-center"
         onClick={handleSubmit}
       >
-        Submit
+        {isLoading ? "Loading..." : "Submit"}
       </button>
       {error && <p className="text-red-400 text-center text-md">{error}</p>}
     </div>
