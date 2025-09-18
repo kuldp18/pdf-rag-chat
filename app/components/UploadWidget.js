@@ -63,6 +63,7 @@ const UploadWidget = () => {
     <div className="text-sm w-full flex flex-col gap-5">
       <input
         type="file"
+        accept="application/pdf"
         ref={fileInputRef}
         onChange={handleChange}
         className="hidden"

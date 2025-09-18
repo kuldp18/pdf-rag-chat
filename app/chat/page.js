@@ -89,7 +89,7 @@ const ChatPage = () => {
 
         <form onSubmit={handleSubmit} className="flex border-t border-gray-700">
           <input
-            autoComplete="false"
+            autoComplete="off"
             name="message"
             className="flex-grow px-4 py-2 text-white border-none focus:outline-none bg-black"
             placeholder="Ask any question to your pdf..."
