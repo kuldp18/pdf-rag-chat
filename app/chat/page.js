@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
 import { IoMdSend as SendIcon } from "react-icons/io";
+import { FaStop as StopIcon } from "react-icons/fa";
+import { DefaultChatTransport } from "ai";
 
 const ChatPage = () => {
+  const [input, setInput] = useState("");
   const { filename } = useAppContext();
   const router = useRouter();
-  const [input, setInput] = useState("");
 
   // redirect if no file selected
   useEffect(() => {
@@ -19,9 +20,20 @@ const ChatPage = () => {
     }
   }, [filename, router]);
 
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+  const { messages, sendMessage, status, error, stop } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: {
+        filename,
+      },
+    }),
   });
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    sendMessage({ text: input });
+    setInput("");
+  }
 
   if (!filename) {
     return (
@@ -37,6 +49,7 @@ const ChatPage = () => {
         <div className="p-4 border-b border-gray-700 text-center">
           Chatting with:{" "}
           <span className="text-blue-500 font-semibold">{filename}.pdf</span>
+          {error && <div className="text-red-500">Error: {error.message}</div>}
         </div>
 
         <div className="flex-grow overflow-y-auto p-4 space-y-3 bg-black">
@@ -47,49 +60,64 @@ const ChatPage = () => {
                 msg.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
-              <div
-                className={`px-3 py-2 rounded-lg max-w-[70%] ${
-                  msg.role === "user"
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-800 text-white"
-                }`}
-              >
-                {msg.parts.map((part, i) =>
-                  part.type === "text" ? <span key={i}>{part.text}</span> : null
-                )}
-              </div>
+              {msg.parts.map((part, index) => {
+                switch (part.type) {
+                  case "text":
+                    return (
+                      <div
+                        key={`${msg.id}-${index}`}
+                        className={`px-3 py-2 rounded-lg max-w-[70%] ${
+                          msg.role === "user"
+                            ? "bg-gray-900 text-white"
+                            : "bg-gray-800 text-white"
+                        }`}
+                      >
+                        {part.text}
+                      </div>
+                    );
+                  default:
+                    return null;
+                }
+              })}
             </div>
           ))}
 
-          {status === "streaming" && (
+          {(status === "streaming" || status === "submitted") && (
             <div className="text-gray-400 text-sm">Assistant is typing...</div>
           )}
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!input.trim()) return;
-            sendMessage({ text: input });
-            setInput("");
-          }}
-          className="flex border-t border-gray-700"
-        >
+        <form onSubmit={handleSubmit} className="flex border-t border-gray-700">
           <input
-            className="flex-grow px-4 py-2  text-white border-none focus:outline-none"
+            autoComplete="false"
+            name="message"
+            className="flex-grow px-4 py-2 text-white border-none focus:outline-none bg-black"
+            placeholder="Ask any question to your pdf..."
+            disabled={status !== "ready"}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask something about the PDF..."
-            disabled={status !== "ready"}
+            onChange={(e) => {
+              setInput(e.target.value);
+            }}
           />
-          <button
-            type="submit"
-            className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 disabled:bg-gray-500 cursor-pointer disabled:cursor-not-allowed flex items-center gap-2"
-            disabled={status !== "ready"}
-          >
-            <span>Send</span>
-            <SendIcon />
-          </button>
+
+          {status === "submitted" || status === "streaming" ? (
+            <button
+              onClick={stop}
+              className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 disabled:bg-gray-500 cursor-pointer disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <span>Stop</span>
+              <StopIcon />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 disabled:bg-gray-500 cursor-pointer disabled:cursor-not-allowed flex items-center gap-2"
+              disabled={status !== "ready" || !input}
+            >
+              <span>Send</span>
+              <SendIcon />
+            </button>
+          )}
         </form>
       </div>
     </main>

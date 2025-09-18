@@ -86,6 +86,11 @@ export async function saveEmbeddings(embeddings) {
 }
 
 export async function queryEmbeddings(queryVector, filename, topK = 5) {
+  if (!filename)
+    throw new Error("Empty filename while querying relevant embeddings");
+
+  const filter = `source = '${filename}'`;
+
   try {
     const res = await fetch(`${process.env.UPSTASH_ENDPOINT}/query`, {
       method: "POST",
@@ -96,7 +101,8 @@ export async function queryEmbeddings(queryVector, filename, topK = 5) {
       body: JSON.stringify({
         vector: queryVector,
         topK,
-        filter: { source: filename }, //filter relevant pdf
+        includeMetadata: true,
+        filter,
       }),
     });
 
@@ -106,7 +112,7 @@ export async function queryEmbeddings(queryVector, filename, topK = 5) {
     }
 
     const data = await res.json();
-    return data.results || [];
+    return data.result || [];
   } catch (err) {
     console.error("Error querying Upstash:", err);
     throw err;
